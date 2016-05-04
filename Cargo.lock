@@ -1,0 +1,4 @@
+[root]
+name = "lalr_gen"
+version = "0.1.0"
+

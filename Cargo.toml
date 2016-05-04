@@ -1,0 +1,4 @@
+[package]
+name = "lalr_gen"
+version = "0.1.0"
+authors = ["Shiroy <awacheux.utc@gmail.com>"]
