@@ -257,6 +257,9 @@ impl GrammarParser {
                 regex: regex,
             };
 
+            if self.grammar.lexical_units.iter().find(|rule| rule.name == lexical_rule.name).is_some() {
+                return Err(format!("line {} : the lexical unit {} has already been declared", self.ctx.row, lexical_rule.name));
+            }
             self.grammar.lexical_units.push(lexical_rule);
             Ok(())
         }
