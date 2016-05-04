@@ -107,8 +107,6 @@ impl ParserContext {
         }
 
         Some(read_word)
-
-        Err(String::from("Not yet implemented. Sorry bro :("))
     }
 
     pub fn read_line(&mut self) -> Option<String> {
@@ -192,8 +190,53 @@ impl GrammarParser {
         Ok(())
     }
 
-    fn parse_grammar_rule(&mut self, firstWord : String) -> Result<(), String> {
-        Err(String::from("NYI"))
+    fn parse_grammar_rule(&mut self, name : String) -> Result<(), String> {
+        match self.ctx.next_word() {
+            None => {return Err(format!("line {} : Expected '->'", self.ctx.row))},
+            Some(token) => {
+                if token != "->" {
+                    return Err(format!("line {} : Expected '->' found '{}'", self.ctx.row, token));
+                }
+            }
+        }
+
+        if let Some(rule_str) = self.ctx.read_line() {
+            let mut production_rule = ProductionRule{
+                name: name,
+                rule: Vec::new()
+            };
+
+            for comp_str in rule_str.split_whitespace() {
+                let component_str = String::from(comp_str);
+                let component = match component_str.chars().next().unwrap() {
+                    'a'...'z' => {RuleComponent::LexicalUnit(component_str.to_owned())},
+                    'A'...'Z' => {RuleComponent::ProductionRule(component_str.to_owned())},
+                    '\'' => {
+                        let s = component_str.len();
+                        if s < 3 {
+                            return Err(format!("line {} : The regex in a production rule cannot be empty.", self.ctx.row));
+                        }
+
+                        let regex = unsafe {component_str.slice_unchecked(1, s-1) }; //TODO : Remove this unsafe
+                        let name = format!("auto_{}", regex);
+
+                        if self.grammar.lexical_units.iter().find(|rule| rule.name == name).is_none() {
+                            self.grammar.lexical_units.push(LexicalUnit{name:name.clone(), regex:String::from(regex)});
+                        }
+
+                        RuleComponent::LexicalUnit(name)
+                    },
+                    _ => {return Err(format!("line {}: '{}' is unexpected", self.ctx.row, component_str))}
+                };
+
+                production_rule.rule.push(component);
+            }
+            self.grammar.production_rules.push(production_rule);
+            Ok(())
+        }
+        else {
+            Err(format!("A production rule cannot be empty"))
+        }
     }
 
     fn parse_lexical_unit(&mut self, name : String) -> Result<(), String> {

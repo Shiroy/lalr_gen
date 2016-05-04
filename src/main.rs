@@ -21,7 +21,7 @@ mod grammar;
 
 fn main() {
 
-    let parsed_grammar = match grammar::parse_grammar("number : [0-9]+(.[0-9]+)?".to_owned()) {
+    let parsed_grammar = match grammar::parse_grammar("S -> P '+'' S".to_owned()) {
         Ok(g) => g,
         Err(msg) => {println!("Error : {}", msg); return;},
     };
