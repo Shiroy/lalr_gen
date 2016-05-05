@@ -89,7 +89,7 @@ impl ParserContext {
                     Some(chr) => { c = chr }
                 }
 
-                match c {
+                match c { //TODO : Implement a better line/column tracking and forward this information in the word
                     ' ' | '\t' => self.col += 1,
                     '\n' => self.row += 1,
                     _ => {}
@@ -260,6 +260,9 @@ impl GrammarParser {
             if self.grammar.lexical_units.iter().find(|rule| rule.name == lexical_rule.name).is_some() {
                 return Err(format!("line {} : the lexical unit {} has already been declared", self.ctx.row, lexical_rule.name));
             }
+
+            //TODO : Implement a check by regex too
+            //TODO : Check that the regex is syntacticly corret (https://crates.io/crates/regex-syntax)
             self.grammar.lexical_units.push(lexical_rule);
             Ok(())
         }
@@ -267,15 +270,41 @@ impl GrammarParser {
             Err(format!("line {} : The regex is expected after ':' but nothing was found", self.ctx.row))
         }
     }
+
+    fn check_consistency(& self) -> Result<(), String> {
+        for production_rule in &self.grammar.production_rules {
+            for rule_component in &production_rule.rule {
+                match rule_component {
+                    &RuleComponent::ProductionRule(ref name) => {
+                        if self.grammar.production_rules.iter().find(|r| *name == r.name).is_none() {
+                            return Err(format!("The production rule '{}' does not exist", name));
+                        }
+                    },
+                    &RuleComponent::LexicalUnit(ref name) => {
+                        if self.grammar.lexical_units.iter().find(|lu| *name  == lu.name).is_none() {
+                            return Err(format!("The lexical unit '{}' does not exist", name));
+                        }
+                    },
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 pub fn parse_grammar(src : String) -> Result<Grammar, String> {
     let mut parser = GrammarParser::new(src);
 
-    match parser.parse() {
-        Ok(()) => Ok(parser.get_resulting_grammar()),
-        Err(msg) => Err(msg)
+    if let Err(msg) = parser.parse() {
+        return Err(msg);
     }
+
+    if let Err(msg) = parser.check_consistency() {
+        return Err(msg);
+    }
+
+    Ok(parser.get_resulting_grammar())
 }
 
 #[test]
