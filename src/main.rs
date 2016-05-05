@@ -17,11 +17,51 @@ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+use std::env;
+use std::fs::File;
+use std::io::Read;
+
 mod grammar;
 
-fn main() {
+fn load_grammar(filename : &String) -> Result<String, String> {
+    let mut f = match File::open(filename) {
+        Err(io_error) => {
+            return Err(io_error.to_string());
+        },
+        Ok(f) => f,
+    };
 
-    let parsed_grammar = match grammar::parse_grammar("S -> P '+'' S".to_owned()) {
+    let mut grammar_content = String::new();
+    match f.read_to_string(&mut grammar_content) {
+        Err(io_error) => {
+            return Err(io_error.to_string());
+        },
+        Ok(_) => {},
+    };
+
+    Ok(grammar_content)
+}
+
+fn main() {
+    let mut args = env::args();
+
+    let grammar_file = match args.nth(1) {
+        Some(f) => f,
+        None => {
+            println!("Error : You must provide a grammar file to parse");
+            return;
+        }
+    };
+
+    let grammar_content = match load_grammar(&grammar_file) {
+        Ok(s) => s,
+        Err(msg) => {
+            println!("Error : {}", msg);
+            return;
+        }
+    };
+
+    let parsed_grammar = match grammar::parse_grammar(grammar_content) {
         Ok(g) => g,
         Err(msg) => {println!("Error : {}", msg); return;},
     };
