@@ -46,6 +46,10 @@ impl Grammar {
             axiom: String::new(),
         }
     }
+
+    fn get_production_rule(&self, name: &String) -> Vec<&ProductionRule> {
+        self.production_rules.iter().filter(|x| x.name == *name).collect()
+    }
 }
 
 //Methods
@@ -291,6 +295,28 @@ impl GrammarParser {
 
         Ok(())
     }
+
+    fn check_for_left_recursion(& self) -> Result<(), String> {
+        self.grammar.production_rules.iter()
+            .map(|p| self.begin_with_production_rule(&p.name, &p.name))
+            .fold(Ok(()), |acc, x| acc.and(x))
+    }
+
+    fn begin_with_production_rule(& self, name: &String, production_to_look_in: &String) -> Result<(), String> {
+        for p in self.grammar.get_production_rule(production_to_look_in) {
+            let first_component = &p.rule.iter().next().unwrap();
+            if let &RuleComponent::ProductionRule(ref p_name) = *first_component {
+                if name == p_name {
+                    return Err(format!("Left recursion for the production rule {}", name));
+                }
+                else {
+                    return self.begin_with_production_rule(name, p_name);
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 pub fn parse_grammar(src : String) -> Result<Grammar, String> {
@@ -301,6 +327,10 @@ pub fn parse_grammar(src : String) -> Result<Grammar, String> {
     }
 
     if let Err(msg) = parser.check_consistency() {
+        return Err(msg);
+    }
+
+    if let Err(msg) = parser.check_for_left_recursion() {
         return Err(msg);
     }
 
