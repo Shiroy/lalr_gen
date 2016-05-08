@@ -8,11 +8,7 @@ use std::io::Write;
 
 static template : &'static str = include_str!("parser.liquid");
 
-pub fn generate(output_filename: String, grammar: Grammar) {
-    let tmplt = liquid::parse(template, Default::default()).unwrap();
-
-    let mut ctx = Context::new();
-
+fn initialize_filter(ctx : &mut liquid::Context) {
     ctx.add_filter("capitalize", Box::new(|input, _args| {
         if let &Value::Str(ref s) = input {
             let res = s.chars().enumerate().map(|(i, c)| if i == 0 {
@@ -26,11 +22,25 @@ pub fn generate(output_filename: String, grammar: Grammar) {
             Err(FilterError::InvalidType("Expected a string".to_owned()))
         }
     }));
+}
+
+fn initialize_liquid_contex(grammar: &Grammar) -> liquid::Context {
+    let mut ctx = Context::new();
+
+    initialize_filter(&mut ctx);
 
     ctx.set_val("production_rules", Value::Array(grammar.get_all_production_rules_name()
                                                         .iter()
                                                         .map(|x| Value::Str(x.clone()))
                                                         .collect()));
+
+    ctx
+}
+
+pub fn generate(output_filename: String, grammar: Grammar) {
+    let tmplt = liquid::parse(template, Default::default()).unwrap();
+
+    let mut ctx = initialize_liquid_contex(&grammar);
 
     match tmplt.render(&mut ctx) {
         Err(msg) => println!("Error : {}", msg),

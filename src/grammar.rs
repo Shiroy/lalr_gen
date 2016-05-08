@@ -18,8 +18,8 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 */
 
 pub struct LexicalUnit {
-    name : String,
-    regex : String,
+    pub name : String,
+    pub regex : String,
 }
 
 pub struct ProductionRule {
