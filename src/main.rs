@@ -18,8 +18,8 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 */
 
 mod grammar;
-
 mod generator;
+mod liquidobject;
 
 use std::env;
 use std::fs::File;

@@ -17,9 +17,24 @@ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+extern crate liquid;
+
+use liquidobject::LiquidObject;
+use self::liquid::Value;
+use std::collections::HashMap;
+
 pub struct LexicalUnit {
-    pub name : String,
-    pub regex : String,
+    name : String,
+    regex : String,
+}
+
+impl LiquidObject for LexicalUnit {
+    fn to_liquid_object(&self) -> Value {
+        let mut result = HashMap::new();
+        result.insert("name".to_owned(), liquid::Value::Str(self.name.clone()));
+        result.insert("regex".to_owned(), liquid::Value::Str(self.regex.clone()));
+        Value::Object(result)
+    }
 }
 
 pub struct ProductionRule {
@@ -67,6 +82,10 @@ impl Grammar {
         };
 
         self.production_rules.iter().map(|x| x.name.clone()).filter(uniq_filter).collect()
+    }
+
+    pub fn get_all_lexical_units(&self) -> &Vec<LexicalUnit> {
+        &self.lexical_units
     }
 }
 
@@ -175,7 +194,8 @@ impl ParserContext {
 
 struct GrammarParser {
     ctx: ParserContext,
-    grammar: Grammar
+    grammar: Grammar,
+    auto_counter: u32, //Counter for generating automatic lexical unit name
 }
 
 impl GrammarParser {
@@ -183,6 +203,7 @@ impl GrammarParser {
         GrammarParser {
             ctx : ParserContext::new(src),
             grammar: Grammar::new(),
+            auto_counter: 1,
         }
     }
 
@@ -240,7 +261,8 @@ impl GrammarParser {
                         }
 
                         let regex = unsafe {component_str.slice_unchecked(1, s-1) }; //TODO : Remove this unsafe
-                        let name = format!("auto_{}", regex);
+                        let name = format!("auto_{}", self.auto_counter);
+                        self.auto_counter += 1;
 
                         if self.grammar.lexical_units.iter().find(|rule| rule.name == name).is_none() {
                             self.grammar.lexical_units.push(LexicalUnit{name:name.clone(), regex:String::from(regex)});

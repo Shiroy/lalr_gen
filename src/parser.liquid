@@ -1,3 +1,17 @@
+pub struct LexicalUnit {
+    name : String,
+    regex : String,
+}
+
+// All lexical units statically are defined here.
+
+{% for lu in lexical_units %}
+    static LexicalUnit{{lu.name | capitalize}}: LexicalUnit = LexicalUnit {
+        name: "{{lu.name}}".to_owned(),
+        regex: "{{lu.regex}}".to_owned(),
+    };
+{% endfor %}
+
 {% for p in production_rules %}
     pub trait Rule{{p | capitalize}} {
         fn On{{p | capitalize}}(context : &mut {{p | capitalize}}Context);
