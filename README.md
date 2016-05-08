@@ -13,14 +13,14 @@ For now, it handles very simple grammar file which are written as shown below :
 ```
 number : [0-9]+(.[0-9]+)?
 
-S -> P '+' S
-S -> P '-' S
-S -> P
-P -> F '*' P
-P -> F '/' P
-P -> F
-F -> '(' S ')'
-F -> number
+Expression -> Product '\+' Expression
+Expression -> Product '-' Expression
+Expression -> Product
+Product -> Factor '\*' Product
+Product -> Factor '/' Product
+Product -> Factor
+Factor -> '\(' Expression '\)'
+Factor -> number
 
 ```
 
