@@ -8,7 +8,7 @@ use std::io::Write;
 
 static template : &'static str = include_str!("parser.liquid");
 
-pub fn generate(grammar: Grammar) {
+pub fn generate(output_filename: String, grammar: Grammar) {
     let tmplt = liquid::parse(template, Default::default()).unwrap();
 
     let mut ctx = Context::new();
@@ -35,7 +35,7 @@ pub fn generate(grammar: Grammar) {
     match tmplt.render(&mut ctx) {
         Err(msg) => println!("Error : {}", msg),
         Ok(generated_code) => {
-            match save_generated_code(generated_code.unwrap()) {
+            match save_generated_code(output_filename, generated_code.unwrap()) {
                 Ok(()) => {},
                 Err(err) => println!("Error : {}", err),
             }
@@ -43,8 +43,8 @@ pub fn generate(grammar: Grammar) {
     }
 }
 
-pub fn save_generated_code(code : String) -> io::Result<()> {
-    let mut f = try!(File::create("out.rs"));
+pub fn save_generated_code(output_filename: String, code : String) -> io::Result<()> {
+    let mut f = try!(File::create(output_filename));
     try!(f.write_all(code.as_bytes()));
 
     Ok(())
