@@ -2,6 +2,9 @@ extern crate liquid;
 
 use grammar::{LexicalUnit, ProductionRule, RuleComponent, Grammar};
 use self::liquid::{Renderable, Context, Value, FilterError};
+use std::fs::File;
+use std::io;
+use std::io::Write;
 
 static template : &'static str = include_str!("parser.liquid");
 
@@ -31,10 +34,18 @@ pub fn generate(grammar: Grammar) {
 
     match tmplt.render(&mut ctx) {
         Err(msg) => println!("Error : {}", msg),
-        Ok(generated_code) => save_generated_code(generated_code.unwrap()),
+        Ok(generated_code) => {
+            match save_generated_code(generated_code.unwrap()) {
+                Ok(()) => {},
+                Err(err) => println!("Error : {}", err),
+            }
+        },
     }
 }
 
-pub fn save_generated_code(code : String) {
-    println!("{}", code);
+pub fn save_generated_code(code : String) -> io::Result<()> {
+    let mut f = try!(File::create("out.rs"));
+    try!(f.write_all(code.as_bytes()));
+
+    Ok(())
 }
