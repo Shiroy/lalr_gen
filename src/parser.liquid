@@ -1,0 +1,5 @@
+{% for p in production_rules %}
+    pub trait Rule{{p | capitalize}} {
+        fn On{{p | capitalize}}(context : &mut {{p | capitalize}}Context);
+    }
+{% endfor %}

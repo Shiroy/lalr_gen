@@ -50,6 +50,24 @@ impl Grammar {
     fn get_production_rule(&self, name: &String) -> Vec<&ProductionRule> {
         self.production_rules.iter().filter(|x| x.name == *name).collect()
     }
+
+    pub fn get_all_production_rules_name(&self) -> Vec<String> {
+        let uniq_filter = {
+            let mut found : Vec<String> = Vec::new();
+
+            move |x:&String| {
+                if found.iter().find(|elem| *elem == x).is_some() {
+                    false
+                }
+                else {
+                    found.push(x.clone());
+                    true
+                }
+            }
+        };
+
+        self.production_rules.iter().map(|x| x.name.clone()).filter(uniq_filter).collect()
+    }
 }
 
 //Methods

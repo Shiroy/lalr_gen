@@ -2,3 +2,7 @@
 name = "lalr_gen"
 version = "0.1.0"
 authors = ["Shiroy <awacheux.utc@gmail.com>"]
+
+[dependencies]
+regex = "0.1.69"
+liquid = "0.7"

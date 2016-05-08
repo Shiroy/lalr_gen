@@ -17,11 +17,13 @@ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+mod grammar;
+
+mod generator;
+
 use std::env;
 use std::fs::File;
 use std::io::Read;
-
-mod grammar;
 
 fn load_grammar(filename : &String) -> Result<String, String> {
     let mut f = match File::open(filename) {
@@ -62,7 +64,7 @@ fn main() {
     };
 
     let parsed_grammar = match grammar::parse_grammar(grammar_content) {
-        Ok(g) => g,
+        Ok(g) => generator::generate(g),
         Err(msg) => {println!("Error : {}", msg); return;},
     };
 }
