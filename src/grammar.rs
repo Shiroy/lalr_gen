@@ -18,10 +18,12 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 */
 
 extern crate liquid;
+extern crate regex_syntax;
 
 use liquidobject::LiquidObject;
 use self::liquid::Value;
 use std::collections::HashMap;
+use self::regex_syntax::Expr;
 
 pub struct LexicalUnit {
     name : String,
@@ -342,6 +344,15 @@ impl GrammarParser {
             .fold(Ok(()), |acc, x| acc.and(x))
     }
 
+    fn check_regexs(&self) -> Result<(), String> {
+        let regex_check_job = |regex: &LexicalUnit| match Expr::parse(&regex.regex) {
+                Ok(_) => Ok(()),
+                Err(err) => Err(format!("Error in regex {} : {}", regex.name, err)),
+            };
+
+        self.grammar.lexical_units.iter().map(regex_check_job).fold(Ok(()), |acc, x| acc.and(x))
+    }
+
     fn begin_with_production_rule(& self, name: &String, production_to_look_in: &String) -> Result<(), String> {
         for p in self.grammar.get_production_rule(production_to_look_in) {
             let first_component = &p.rule.iter().next().unwrap();
@@ -371,6 +382,10 @@ pub fn parse_grammar(src : String) -> Result<Grammar, String> {
     }
 
     if let Err(msg) = parser.check_for_left_recursion() {
+        return Err(msg);
+    }
+
+    if let Err(msg) = parser.check_regexs() {
         return Err(msg);
     }
 

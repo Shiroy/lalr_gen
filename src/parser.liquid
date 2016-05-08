@@ -1,6 +1,9 @@
+extern crate regex;
+use regex::Regex;
+
 pub struct LexicalUnit {
     name : String,
-    regex : String,
+    regex : Regex,
 }
 
 // All lexical units statically are defined here.
@@ -8,7 +11,7 @@ pub struct LexicalUnit {
 {% for lu in lexical_units %}
     static LexicalUnit{{lu.name | capitalize}}: LexicalUnit = LexicalUnit {
         name: "{{lu.name}}".to_owned(),
-        regex: "{{lu.regex}}".to_owned(),
+        regex: Regex::new("{{lu.regex}}"),
     };
 {% endfor %}
 
