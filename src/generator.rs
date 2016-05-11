@@ -25,6 +25,7 @@ use std::fs::File;
 use std::io;
 use std::io::Write;
 use liquidobject::LiquidObject;
+use std::path::Path;
 
 static template : &'static str = include_str!("parser.liquid");
 
@@ -61,8 +62,9 @@ fn initialize_liquid_contex(grammar: &Grammar) -> liquid::Context {
     ctx
 }
 
-pub fn generate(output_filename: String, grammar: Grammar) {
+pub fn generate(grammar_file: String, grammar: Grammar) {
     let tmplt = liquid::parse(template, Default::default()).unwrap();
+    let output_filename = normalize_output_filename(grammar_file);
 
     let mut ctx = initialize_liquid_contex(&grammar);
 
@@ -75,6 +77,16 @@ pub fn generate(output_filename: String, grammar: Grammar) {
             }
         },
     }
+}
+
+fn normalize_output_filename(grammar_file: String) -> String {
+    let path = Path::new(&grammar_file);
+    let filename = path.file_stem().unwrap().to_str().unwrap();
+    match path.parent() {
+        None => format!("{}.rs", filename),
+        Some(p) => format!("{}/{}.rs", p.to_str().unwrap(), filename)
+    }
+
 }
 
 pub fn save_generated_code(output_filename: String, code : String) -> io::Result<()> {

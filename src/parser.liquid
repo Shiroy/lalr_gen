@@ -1,22 +1,90 @@
 extern crate regex;
-use regex::Regex;
+use self::regex::Regex;
 
-pub struct LexicalUnit {
+pub struct LexicalUnitTemplate {
     name : String,
     regex : Regex,
 }
 
-// All lexical units statically are defined here.
+pub struct LexicalUnit {
+    pub name: String,
+    pub matched_text: String,
+    pub start: usize,
+    pub end: usize,
+}
 
-{% for lu in lexical_units %}
-    static LexicalUnit{{lu.name | capitalize}}: LexicalUnit = LexicalUnit {
-        name: "{{lu.name}}".to_owned(),
-        regex: Regex::new("{{lu.regex}}"),
-    };
-{% endfor %}
+pub type LexicalUnitResult = Option<LexicalUnit>;
 
+pub struct ParserContext {
+    src: String,
+    position: usize, //TODO : Improve this
+    all_lexical_units : Vec<LexicalUnitTemplate>
+}
+
+impl ParserContext {
+    pub fn new(src: &String) -> ParserContext {
+        ParserContext {
+            src: src.clone(),
+            position: 0,
+            all_lexical_units : vec![
+            {% for lu in lexical_units %}
+            LexicalUnitTemplate {
+                name: "{{lu.name}}".to_owned(),
+                regex: Regex::new(r"{{lu.regex}}").unwrap()
+            },
+            {% endfor %}
+            ]
+        }
+    }
+
+    pub fn next_lexical_token(&mut self) -> Result<LexicalUnitResult, String> {
+        let working_str : String = self.src.chars()
+                                            .enumerate()
+                                            .filter(|&(i, _)| i >= self.position)
+                                            .map(|(_, c)| c)
+                                            .collect();
+
+        if working_str.is_empty() {
+            return Ok(None);
+        }
+
+        for lu in &self.all_lexical_units {
+            if let Some((start, end)) = lu.regex.find(&working_str) {
+                if start == 0 {
+                    let resulting_lexical_unit : LexicalUnitResult = Some(LexicalUnit {
+                        name: lu.name.clone(),
+                        matched_text : {
+                            working_str.chars()
+                                .enumerate()
+                                .filter(|&(pos, _)| pos < end)
+                                .map(|(_, c)| c)
+                                .collect()
+                        },
+                        start : self.position,
+                        end: self.position + end,
+                    });
+
+                    self.position += end;
+
+                    return Ok(resulting_lexical_unit);
+                }
+                else {
+                    continue;
+                }
+            }
+            else {
+                continue;
+            }
+        }
+
+        Err(format!("Unknown token after position {}", self.position))
+    }
+}
+
+/*
 {% for p in production_rules %}
     pub trait Rule{{p | capitalize}} {
         fn On{{p | capitalize}}(context : &mut {{p | capitalize}}Context);
     }
 {% endfor %}
+*/

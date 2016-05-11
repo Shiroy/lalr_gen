@@ -1,2 +1,6 @@
 target
 *.lalr.rs
+
+#Ignore generated file for tests
+
+test/expr/src/expr.rs
