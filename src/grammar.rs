@@ -262,7 +262,12 @@ impl GrammarParser {
                             return Err(format!("line {} : The regex in a production rule cannot be empty.", self.ctx.row));
                         }
 
-                        let regex = unsafe {component_str.slice_unchecked(1, s-1) }; //TODO : Remove this unsafe
+                        let regex : String = component_str.chars()
+                                                    .enumerate()
+                                                    .filter(|&(i, _)| 0 < i && i < s-1)
+                                                    .map(|(_, c)| c)
+                                                    .collect();
+
                         let name = format!("auto_{}", self.auto_counter);
                         self.auto_counter += 1;
 
