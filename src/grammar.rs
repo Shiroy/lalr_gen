@@ -46,7 +46,8 @@ pub struct ProductionRule {
 
 pub enum RuleComponent {
     ProductionRule(String),
-    LexicalUnit(String)
+    LexicalUnit(String),
+    Epsilon
 }
 
 pub struct Grammar {
@@ -254,7 +255,11 @@ impl GrammarParser {
             for comp_str in rule_str.split_whitespace() {
                 let component_str = String::from(comp_str);
                 let component = match component_str.chars().next().unwrap() {
-                    'a'...'z' => {RuleComponent::LexicalUnit(component_str.to_owned())},
+                    'a'...'z' => if component_str == "epsilon" {
+                        RuleComponent::Epsilon
+                    } else {
+                        RuleComponent::LexicalUnit(component_str.to_owned())
+                    },
                     'A'...'Z' => {RuleComponent::ProductionRule(component_str.to_owned())},
                     '\'' => {
                         let s = component_str.len();
@@ -336,6 +341,7 @@ impl GrammarParser {
                             return Err(format!("The lexical unit '{}' does not exist", name));
                         }
                     },
+                    &RuleComponent::Epsilon => {},
                 }
             }
         }
