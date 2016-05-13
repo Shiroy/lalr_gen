@@ -19,11 +19,14 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 
 extern crate liquid;
 extern crate regex_syntax;
+extern crate core;
 
 use liquidobject::LiquidObject;
 use self::liquid::Value;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use self::regex_syntax::Expr;
+use self::core::iter::FromIterator;
 
 pub struct LexicalUnit {
     name : String,
@@ -46,6 +49,12 @@ pub struct ProductionRule {
 
 pub enum RuleComponent {
     ProductionRule(String),
+    LexicalUnit(String),
+    Epsilon
+}
+
+#[derive(PartialEq, Eq, Hash, Clone)]
+pub enum FirstElement { //Elements that appear in the first sets
     LexicalUnit(String),
     Epsilon
 }
@@ -89,6 +98,66 @@ impl Grammar {
 
     pub fn get_all_lexical_units(&self) -> &Vec<LexicalUnit> {
         &self.lexical_units
+    }
+
+    pub fn first(&self) -> HashMap<String, HashSet<FirstElement> > {
+        let mut result : HashMap<String, HashSet<FirstElement> > = HashMap::new();
+
+        for rule in self.get_all_production_rules_name() {
+            result.insert(rule, HashSet::new());
+        }
+
+        let mut modified = true;
+
+        while modified {
+            modified = false;
+            //println!("Iteration because of modified");
+
+            for rule in &self.production_rules {
+                let mut epsilon_found = true;
+                let mut rule_node_iter = rule.rule.iter();
+                let mut new_first_set : HashSet<FirstElement> = {
+                    let mut set = HashSet::new();
+                    let first_set = result.get(&rule.name).unwrap();
+                    set = set.union(&first_set).map(|x| x.clone()).collect();
+                    set
+                };
+
+                while epsilon_found {
+                    //println!("Iteration because of epsilon_found");
+                    epsilon_found = false;
+
+                    if let Some(rule_node) = rule_node_iter.next() {
+                        match rule_node {
+                            &RuleComponent::LexicalUnit(ref name) => {
+                                modified = modified || new_first_set.insert(FirstElement::LexicalUnit(name.clone()));
+                            },
+                            &RuleComponent::Epsilon => {
+                                modified = modified || new_first_set.insert(FirstElement::Epsilon);
+                            }
+                            &RuleComponent::ProductionRule(ref name) => {
+                                let first_set = result.get(name).unwrap();
+                                //Check if we have an epsilon
+                                epsilon_found = first_set.iter().any(|x| match x {
+                                    &FirstElement::Epsilon => true,
+                                    _ => false,
+                                });
+
+                                for elem in first_set {
+                                    if let &FirstElement::LexicalUnit(ref name) = elem {
+                                        //println!("Inserting {}", name);
+                                        modified = modified || new_first_set.insert(elem.clone());
+                                    }
+                                }
+                            }
+                        };
+                    }
+                    result.insert(rule.name.clone(), new_first_set.clone());
+                }
+            }
+        }
+
+        result
     }
 }
 
