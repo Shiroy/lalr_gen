@@ -355,6 +355,10 @@ impl GrammarParser {
                 };
 
                 production_rule.rule.push(component);
+
+                if self.grammar.axiom.is_empty() {
+                    self.grammar.axiom = production_rule.name.clone();
+                }
             }
             self.grammar.production_rules.push(production_rule);
             Ok(())
