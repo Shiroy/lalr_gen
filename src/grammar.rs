@@ -59,6 +59,12 @@ pub enum FirstElement { //Elements that appear in the first sets
     Epsilon
 }
 
+#[derive(PartialEq, Eq, Hash, Clone)]
+pub enum FollowElement {
+    LexicalUnit(String),
+    EndOfString
+}
+
 pub struct Grammar {
     lexical_units : Vec<LexicalUnit>,
     production_rules: Vec<ProductionRule>,
@@ -100,7 +106,7 @@ impl Grammar {
         &self.lexical_units
     }
 
-    pub fn first(&self) -> HashMap<String, HashSet<FirstElement> > {
+    fn first(&self) -> HashMap<String, HashSet<FirstElement> > {
         let mut result : HashMap<String, HashSet<FirstElement> > = HashMap::new();
 
         for rule in self.get_all_production_rules_name() {
@@ -158,6 +164,93 @@ impl Grammar {
         }
 
         result
+    }
+
+    fn follow(&self, first : &HashMap<String, HashSet<FirstElement>>) -> HashMap<String, HashSet<FollowElement> > {
+        let mut result : HashMap<String, HashSet<FollowElement>> = HashMap::new();
+
+        for rule_name in self.get_all_production_rules_name() {
+            result.insert(rule_name.clone(), {
+                if rule_name == self.axiom {
+                    let mut set = HashSet::new();
+                    set.insert(FollowElement::EndOfString);
+                    set
+                }
+                else {
+                    HashSet::new()
+                }
+            });
+
+        }
+
+        let mut modified = true;
+
+        while modified {
+            modified = false;
+
+            for rule in &self.production_rules {
+                let mut rule_node_iter = rule.rule.iter().peekable();
+
+                loop {
+                    if let Some(rule_node) = rule_node_iter.next() {
+                        match rule_node {
+                            &RuleComponent::ProductionRule(ref pr_name) => {
+                                let mut new_follow_set = {
+                                    let mut set = HashSet::new();
+                                    let follow_set = result.get(pr_name).unwrap();
+                                    set = set.union(&follow_set).map(|x| x.clone()).collect();
+                                    set
+                                };
+
+                                if let Some(next_elem) = rule_node_iter.peek() { //Case A -> aBb => Add FIRST(b) to FOLLOW(B) except epsilon
+                                    if let &&RuleComponent::ProductionRule(ref b_name) = next_elem {
+                                        let first_b = first.get(b_name).unwrap();
+
+                                        for b_elem in first_b.iter() {
+                                            match b_elem {
+                                                &FirstElement::LexicalUnit(ref lu_name) => {
+                                                    modified = new_follow_set.insert(FollowElement::LexicalUnit(lu_name.clone())) || modified;
+                                                },
+                                                &FirstElement::Epsilon => { //In this case, add FOLLOW(A) to FOLLOW(B)
+                                                    let follow_A = result.get(&rule.name).unwrap();
+                                                    for elem in follow_A.iter() {
+                                                        modified = new_follow_set.insert(elem.clone()) || modified;
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                    } else if let &&RuleComponent::LexicalUnit(ref lu_name) = next_elem {
+                                        modified = new_follow_set.insert(FollowElement::LexicalUnit(lu_name.clone())) || modified;
+                                    }
+                                }
+                                else { // Case A -> aB => add FOLLOW(A) to FOLLOW(B)
+                                    let follow_A = result.get(&rule.name).unwrap();
+                                    for elem in follow_A.iter() {
+                                        modified = new_follow_set.insert(elem.clone()) || modified;
+                                    }
+                                }
+
+                                result.insert(pr_name.clone(), new_follow_set.clone());
+                            },
+                            _ => {}
+                        }
+                    }
+                    else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        result
+    }
+
+    pub fn first_and_follow(&self) ->  (HashMap<String, HashSet<FirstElement> >, HashMap<String, HashSet<FollowElement> >) {
+        let first = self.first();
+        let follow = self.follow(&first);
+
+        (first, follow)
     }
 }
 

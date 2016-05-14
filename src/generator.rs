@@ -19,7 +19,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 
 extern crate liquid;
 
-use grammar::{LexicalUnit, ProductionRule, RuleComponent, Grammar, FirstElement};
+use grammar::{LexicalUnit, ProductionRule, RuleComponent, Grammar, FirstElement, FollowElement};
 use self::liquid::{Renderable, Context, Value, FilterError};
 use std::fs::File;
 use std::io;
@@ -63,20 +63,6 @@ fn initialize_liquid_contex(grammar: &Grammar) -> liquid::Context {
 }
 
 pub fn generate(grammar_file: String, grammar: Grammar) {
-
-    for (rule, set) in grammar.first() {
-        print!("FIRST({}) = {{ ", rule);
-
-        for f in set.iter() {
-            match f {
-                &FirstElement::LexicalUnit(ref name) => {print!("{} ", name);}
-                &FirstElement::Epsilon => {print!("ε ");}
-            }
-        }
-
-        println!("}}", );
-    }
-
     let tmplt = liquid::parse(template, Default::default()).unwrap();
     let output_filename = normalize_output_filename(grammar_file);
 
