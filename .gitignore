@@ -4,4 +4,4 @@ target
 #Ignore generated file for tests
 
 test/expr/src/expr.rs
-test/arith/arith.rs
+test/arith/src/arith.rs
