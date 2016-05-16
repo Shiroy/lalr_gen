@@ -19,7 +19,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 
 extern crate liquid;
 
-use grammar::{LexicalUnit, ProductionRule, RuleComponent, Grammar, FirstElement, FollowElement};
+use grammar::{LexicalUnit, ProductionRule, RuleComponent, Grammar};
 use self::liquid::{Renderable, Context, Value, FilterError};
 use std::fs::File;
 use std::io;

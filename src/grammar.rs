@@ -54,15 +54,10 @@ pub enum RuleComponent {
 }
 
 #[derive(PartialEq, Eq, Hash, Clone)]
-pub enum FirstElement { //Elements that appear in the first sets
+pub enum SetElement { //Elements that appear in the first and follow sets
     LexicalUnit(String),
+    EndOfString,
     Epsilon
-}
-
-#[derive(PartialEq, Eq, Hash, Clone)]
-pub enum FollowElement {
-    LexicalUnit(String),
-    EndOfString
 }
 
 pub struct Grammar {
@@ -106,8 +101,8 @@ impl Grammar {
         &self.lexical_units
     }
 
-    fn first(&self) -> HashMap<String, HashSet<FirstElement> > {
-        let mut result : HashMap<String, HashSet<FirstElement> > = HashMap::new();
+    fn first(&self) -> HashMap<String, HashSet<SetElement> > {
+        let mut result : HashMap<String, HashSet<SetElement> > = HashMap::new();
 
         for rule in self.get_all_production_rules_name() {
             result.insert(rule, HashSet::new());
@@ -122,7 +117,7 @@ impl Grammar {
             for rule in &self.production_rules {
                 let mut epsilon_found = true;
                 let mut rule_node_iter = rule.rule.iter();
-                let mut new_first_set : HashSet<FirstElement> = {
+                let mut new_first_set : HashSet<SetElement> = {
                     let mut set = HashSet::new();
                     let first_set = result.get(&rule.name).unwrap();
                     set = set.union(&first_set).map(|x| x.clone()).collect();
@@ -136,21 +131,21 @@ impl Grammar {
                     if let Some(rule_node) = rule_node_iter.next() {
                         match rule_node {
                             &RuleComponent::LexicalUnit(ref name) => {
-                                modified = modified || new_first_set.insert(FirstElement::LexicalUnit(name.clone()));
+                                modified = modified || new_first_set.insert(SetElement::LexicalUnit(name.clone()));
                             },
                             &RuleComponent::Epsilon => {
-                                modified = modified || new_first_set.insert(FirstElement::Epsilon);
+                                modified = modified || new_first_set.insert(SetElement::Epsilon);
                             }
                             &RuleComponent::ProductionRule(ref name) => {
                                 let first_set = result.get(name).unwrap();
                                 //Check if we have an epsilon
                                 epsilon_found = first_set.iter().any(|x| match x {
-                                    &FirstElement::Epsilon => true,
+                                    &SetElement::Epsilon => true,
                                     _ => false,
                                 });
 
                                 for elem in first_set {
-                                    if let &FirstElement::LexicalUnit(ref name) = elem {
+                                    if let &SetElement::LexicalUnit(ref name) = elem {
                                         //println!("Inserting {}", name);
                                         modified = modified || new_first_set.insert(elem.clone());
                                     }
@@ -166,14 +161,14 @@ impl Grammar {
         result
     }
 
-    fn follow(&self, first : &HashMap<String, HashSet<FirstElement>>) -> HashMap<String, HashSet<FollowElement> > {
-        let mut result : HashMap<String, HashSet<FollowElement>> = HashMap::new();
+    fn follow(&self, first : &HashMap<String, HashSet<SetElement>>) -> HashMap<String, HashSet<SetElement> > {
+        let mut result : HashMap<String, HashSet<SetElement>> = HashMap::new();
 
         for rule_name in self.get_all_production_rules_name() {
             result.insert(rule_name.clone(), {
                 if rule_name == self.axiom {
                     let mut set = HashSet::new();
-                    set.insert(FollowElement::EndOfString);
+                    set.insert(SetElement::EndOfString);
                     set
                 }
                 else {
@@ -208,20 +203,21 @@ impl Grammar {
 
                                         for b_elem in first_b.iter() {
                                             match b_elem {
-                                                &FirstElement::LexicalUnit(ref lu_name) => {
-                                                    modified = new_follow_set.insert(FollowElement::LexicalUnit(lu_name.clone())) || modified;
+                                                &SetElement::LexicalUnit(ref lu_name) => {
+                                                    modified = new_follow_set.insert(SetElement::LexicalUnit(lu_name.clone())) || modified;
                                                 },
-                                                &FirstElement::Epsilon => { //In this case, add FOLLOW(A) to FOLLOW(B)
+                                                &SetElement::Epsilon => { //In this case, add FOLLOW(A) to FOLLOW(B)
                                                     let follow_A = result.get(&rule.name).unwrap();
                                                     for elem in follow_A.iter() {
                                                         modified = new_follow_set.insert(elem.clone()) || modified;
                                                     }
                                                 }
+                                                &SetElement::EndOfString => { unreachable!(); }
                                             }
                                         }
 
                                     } else if let &&RuleComponent::LexicalUnit(ref lu_name) = next_elem {
-                                        modified = new_follow_set.insert(FollowElement::LexicalUnit(lu_name.clone())) || modified;
+                                        modified = new_follow_set.insert(SetElement::LexicalUnit(lu_name.clone())) || modified;
                                     }
                                 }
                                 else { // Case A -> aB => add FOLLOW(A) to FOLLOW(B)
@@ -246,7 +242,7 @@ impl Grammar {
         result
     }
 
-    pub fn first_and_follow(&self) ->  (HashMap<String, HashSet<FirstElement> >, HashMap<String, HashSet<FollowElement> >) {
+    fn first_and_follow(&self) ->  (HashMap<String, HashSet<SetElement> >, HashMap<String, HashSet<SetElement> >) {
         let first = self.first();
         let follow = self.follow(&first);
 
