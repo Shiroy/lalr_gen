@@ -27,7 +27,7 @@ use std::io::Write;
 use liquidobject::LiquidObject;
 use std::path::Path;
 
-static template : &'static str = include_str!("parser.liquid");
+static TEMPLATE : &'static str = include_str!("parser.liquid");
 
 fn initialize_filter(ctx : &mut liquid::Context) {
     ctx.add_filter("capitalize", Box::new(|input, _args| {
@@ -63,7 +63,7 @@ fn initialize_liquid_contex(grammar: &Grammar) -> liquid::Context {
 }
 
 pub fn generate(grammar_file: String, grammar: Grammar) {
-    let tmplt = liquid::parse(template, Default::default()).unwrap();
+    let tmplt = liquid::parse(TEMPLATE, Default::default()).unwrap();
     let output_filename = normalize_output_filename(grammar_file);
 
     let mut ctx = initialize_liquid_contex(&grammar);

@@ -19,7 +19,6 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 
 extern crate liquid;
 use self::liquid::Value;
-use std::collections::HashMap;
 
 pub trait LiquidObject {
     fn to_liquid_object(&self) -> Value;

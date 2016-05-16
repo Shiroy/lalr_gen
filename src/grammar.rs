@@ -25,7 +25,6 @@ use liquidobject::LiquidObject;
 use self::liquid::Value;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use self::core::iter::FromIterator;
 use self::regex_syntax::Expr;
 
 #[derive(Debug)]
@@ -201,7 +200,7 @@ impl Grammar {
                                 });
 
                                 for elem in first_set {
-                                    if let &SetElement::LexicalUnit(ref name) = elem {
+                                    if let &SetElement::LexicalUnit(_) = elem {
                                         //println!("Inserting {}", name);
                                         modified = modified || new_first_set.insert(elem.clone());
                                     }
@@ -263,8 +262,8 @@ impl Grammar {
                                                     modified = new_follow_set.insert(SetElement::LexicalUnit(lu_name.clone())) || modified;
                                                 },
                                                 &SetElement::Epsilon => { //In this case, add FOLLOW(A) to FOLLOW(B)
-                                                    let follow_A = result.get(&rule.name).unwrap();
-                                                    for elem in follow_A.iter() {
+                                                    let follow_a = result.get(&rule.name).unwrap();
+                                                    for elem in follow_a.iter() {
                                                         modified = new_follow_set.insert(elem.clone()) || modified;
                                                     }
                                                 }
@@ -277,8 +276,8 @@ impl Grammar {
                                     }
                                 }
                                 else { // Case A -> aB => add FOLLOW(A) to FOLLOW(B)
-                                    let follow_A = result.get(&rule.name).unwrap();
-                                    for elem in follow_A.iter() {
+                                    let follow_a = result.get(&rule.name).unwrap();
+                                    for elem in follow_a.iter() {
                                         modified = new_follow_set.insert(elem.clone()) || modified;
                                     }
                                 }
@@ -310,7 +309,7 @@ impl Grammar {
         let first = self.first();
 
         for rule_name in self.get_all_production_rules_name() {
-            let mut accumulatorSet : HashSet<SetElement> = HashSet::new();
+            let mut accumulator_set : HashSet<SetElement> = HashSet::new();
 
             for rule in self.get_production_rule(&rule_name) {
                 let mut node_iter = rule.rule.iter();
@@ -319,14 +318,14 @@ impl Grammar {
 
                 match rule_node {
                     &RuleComponent::LexicalUnit(ref name) => {
-                        if !accumulatorSet.insert(SetElement::LexicalUnit(name.clone())) {
+                        if !accumulator_set.insert(SetElement::LexicalUnit(name.clone())) {
                             return Err(format!("First-First conflict for the non-terminal {}", rule_name));
                         }
                     },
                     &RuleComponent::ProductionRule(ref name) => { //Form A -> B...
-                        let first_of_B = first.get(name).unwrap();
-                        for first_elem in first_of_B {
-                            if !accumulatorSet.insert(first_elem.clone()) {
+                        let first_of_b = first.get(name).unwrap();
+                        for first_elem in first_of_b {
+                            if !accumulator_set.insert(first_elem.clone()) {
                                 return Err(format!("First-First conflict for the non-terminal {}", rule_name));
                             }
                         }
@@ -343,15 +342,15 @@ impl Grammar {
         let (first, follow) = self.first_and_follow();
 
         for rule_name in self.get_all_production_rules_name() {
-            let first_of_A = first.get(&rule_name).unwrap();
-            let follow_of_A = follow.get(&rule_name).unwrap();
+            let first_of_a = first.get(&rule_name).unwrap();
+            let follow_of_a = follow.get(&rule_name).unwrap();
 
-            if first_of_A.iter().any(|x| match x {
+            if first_of_a.iter().any(|x| match x {
                 &SetElement::Epsilon => true,
                 &SetElement::EndOfString => { unreachable!() },
                 _ => false
             }) {
-                if !first_of_A.is_disjoint(&follow_of_A) {
+                if !first_of_a.is_disjoint(&follow_of_a) {
                     return Err(format!("First-Follow conflict for the non-terminal {}", rule_name));
                 }
             }

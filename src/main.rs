@@ -64,7 +64,7 @@ fn main() {
         }
     };
 
-    let parsed_grammar = match grammar_parser::parse_grammar(grammar_content) {
+    match grammar_parser::parse_grammar(grammar_content) {
         Ok(g) => generator::generate(grammar_file, g),
         Err(msg) => {println!("Error : {}", msg); return;},
     };
