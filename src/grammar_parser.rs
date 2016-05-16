@@ -181,12 +181,19 @@ impl GrammarParser {
                         let name = format!("auto_{}", self.auto_counter);
                         self.auto_counter += 1;
 
-                        self.grammar.add_lexical_unit(LexicalUnit{
+                        let lu = LexicalUnit{
                             name: name.clone(),
                             regex: regex.clone(),
-                        });
+                        };
 
-                        RuleComponent::LexicalUnit(name)
+                        if !self.grammar.lexical_unit_exist(&lu) {
+                            self.grammar.add_lexical_unit(lu);
+                            RuleComponent::LexicalUnit(name)
+                        }
+                        else {
+                            let lu = self.grammar.get_lexical_unit_by_regex(&regex).unwrap();
+                            RuleComponent::LexicalUnit(lu.name.clone())
+                        }
                     },
                     _ => {return Err(format!("line {}: '{}' is unexpected", self.ctx.row, component_str))}
                 };
@@ -281,4 +288,32 @@ fn test_read_line() {
     assert_eq!(ctx.read_line().unwrap(), "line2");
     assert_eq!(ctx.read_line().unwrap(), "line3");
     assert_eq!(ctx.read_line().unwrap(), "line4");
+}
+
+#[test]
+fn test_first_first_conflict_1() {
+    let grammar = String::from(include_str!("../test/test_grammars/first_first_1.ll"));
+    let parse_result = parse_grammar(grammar);
+    assert_eq!(parse_result.unwrap_err(), "First-First conflict for the non-terminal A");
+}
+
+#[test]
+fn test_first_first_conflict_2() {
+    let grammar = String::from(include_str!("../test/test_grammars/first_first_2.ll"));
+    let parse_result = parse_grammar(grammar);
+    assert_eq!(parse_result.unwrap_err(), "First-First conflict for the non-terminal T");
+}
+
+#[test]
+fn test_first_follow_conflict_1() {
+    let grammar = String::from(include_str!("../test/test_grammars/first_follow_1.ll"));
+    let parse_result = parse_grammar(grammar);
+    assert_eq!(parse_result.unwrap_err(), "First-Follow conflict for the non-terminal T");
+}
+
+#[test]
+fn test_first_follow_conflict_2() {
+    let grammar = String::from(include_str!("../test/test_grammars/first_follow_2.ll"));
+    let parse_result = parse_grammar(grammar);
+    assert!(parse_result.is_ok());
 }

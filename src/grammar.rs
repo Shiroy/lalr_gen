@@ -28,6 +28,7 @@ use std::collections::HashSet;
 use self::core::iter::FromIterator;
 use self::regex_syntax::Expr;
 
+#[derive(Debug)]
 pub struct LexicalUnit {
     pub name : String,
     pub regex : String,
@@ -42,11 +43,13 @@ impl LiquidObject for LexicalUnit {
     }
 }
 
+#[derive(Debug)]
 pub struct ProductionRule {
     pub name: String,
     pub rule: Vec<RuleComponent>
 }
 
+#[derive(Debug)]
 pub enum RuleComponent {
     ProductionRule(String),
     LexicalUnit(String),
@@ -60,6 +63,7 @@ pub enum SetElement { //Elements that appear in the first and follow sets
     Epsilon
 }
 
+#[derive(Debug)]
 pub struct Grammar {
     lexical_units : Vec<LexicalUnit>,
     production_rules: Vec<ProductionRule>,
@@ -76,7 +80,7 @@ impl Grammar {
     }
 
     pub fn add_lexical_unit(&mut self, lu: LexicalUnit) {
-        if self.lexical_units.iter().find(|rule| rule.name == lu.name).is_none() {
+        if self.lexical_units.iter().find(|rule| rule.regex == lu.regex).is_none() {
             self.lexical_units.push(lu);
         }
     }
@@ -120,7 +124,11 @@ impl Grammar {
     }
 
     pub fn lexical_unit_exist(&self, lexical_rule: &LexicalUnit) -> bool {
-        self.lexical_units.iter().find(|rule| rule.name == lexical_rule.name).is_some()
+        self.lexical_units.iter().find(|rule| rule.regex == lexical_rule.regex).is_some()
+    }
+
+    pub fn get_lexical_unit_by_regex(&self, regex: &String) -> Option<&LexicalUnit> {
+        self.lexical_units.iter().find(|rule| rule.regex == *regex)
     }
 
     fn get_production_rule(&self, name: &String) -> Vec<&ProductionRule> {
@@ -344,7 +352,7 @@ impl Grammar {
                 _ => false
             }) {
                 if !first_of_A.is_disjoint(&follow_of_A) {
-                    return Err(format!("First-Follow conflict for non-terminal {}", rule_name));
+                    return Err(format!("First-Follow conflict for the non-terminal {}", rule_name));
                 }
             }
         }
