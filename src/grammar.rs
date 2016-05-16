@@ -248,6 +248,40 @@ impl Grammar {
 
         (first, follow)
     }
+
+    fn check_for_first_first_conflicts(&self) -> Result<(), String> {
+
+        let first = self.first();
+
+        for rule_name in self.get_all_production_rules_name() {
+            let mut accumulatorSet : HashSet<SetElement> = HashSet::new();
+
+            for rule in self.get_production_rule(&rule_name) {
+                let mut node_iter = rule.rule.iter();
+
+                let rule_node = node_iter.next().unwrap();
+
+                match rule_node {
+                    &RuleComponent::LexicalUnit(ref name) => {
+                        if !accumulatorSet.insert(SetElement::LexicalUnit(name.clone())) {
+                            return Err(format!("First-First conflict for the rule {}", rule_name));
+                        }
+                    },
+                    &RuleComponent::ProductionRule(ref name) => { //Form A -> B...
+                        let first_of_B = first.get(name).unwrap();
+                        for first_elem in first_of_B {
+                            if !accumulatorSet.insert(first_elem.clone()) {
+                                return Err(format!("First-First conflict for the rule {}", rule_name));
+                            }
+                        }
+                    },
+                    _ => {} //We don't care about epsilon in First-First conflicts
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 //Methods
@@ -511,12 +545,6 @@ impl GrammarParser {
         Ok(())
     }
 
-    fn check_for_left_recursion(& self) -> Result<(), String> {
-        self.grammar.production_rules.iter()
-            .map(|p| self.begin_with_production_rule(&p.name, &p.name))
-            .fold(Ok(()), |acc, x| acc.and(x))
-    }
-
     fn check_regexs(&self) -> Result<(), String> {
         let regex_check_job = |regex: &LexicalUnit| match Expr::parse(&regex.regex) {
                 Ok(_) => Ok(()),
@@ -524,22 +552,6 @@ impl GrammarParser {
             };
 
         self.grammar.lexical_units.iter().map(regex_check_job).fold(Ok(()), |acc, x| acc.and(x))
-    }
-
-    fn begin_with_production_rule(& self, name: &String, production_to_look_in: &String) -> Result<(), String> {
-        for p in self.grammar.get_production_rule(production_to_look_in) {
-            let first_component = &p.rule.iter().next().unwrap();
-            if let &RuleComponent::ProductionRule(ref p_name) = *first_component {
-                if name == p_name {
-                    return Err(format!("Left recursion for the production rule {}", name));
-                }
-                else {
-                    return self.begin_with_production_rule(name, p_name);
-                }
-            }
-        }
-
-        Ok(())
     }
 }
 
@@ -554,15 +566,17 @@ pub fn parse_grammar(src : String) -> Result<Grammar, String> {
         return Err(msg);
     }
 
-    if let Err(msg) = parser.check_for_left_recursion() {
-        return Err(msg);
-    }
-
     if let Err(msg) = parser.check_regexs() {
         return Err(msg);
     }
 
-    Ok(parser.get_resulting_grammar())
+    let grammar = parser.get_resulting_grammar();
+
+    if let Err(msg) = grammar.check_for_first_first_conflicts() {
+        return Err(msg);
+    }
+
+    Ok(grammar)
 }
 
 #[test]
