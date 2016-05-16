@@ -18,19 +18,19 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 */
 
 extern crate liquid;
-extern crate regex_syntax;
 extern crate core;
+extern crate regex_syntax;
 
 use liquidobject::LiquidObject;
 use self::liquid::Value;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use self::regex_syntax::Expr;
 use self::core::iter::FromIterator;
+use self::regex_syntax::Expr;
 
 pub struct LexicalUnit {
-    name : String,
-    regex : String,
+    pub name : String,
+    pub regex : String,
 }
 
 impl LiquidObject for LexicalUnit {
@@ -43,8 +43,8 @@ impl LiquidObject for LexicalUnit {
 }
 
 pub struct ProductionRule {
-    name: String,
-    rule: Vec<RuleComponent>
+    pub name: String,
+    pub rule: Vec<RuleComponent>
 }
 
 pub enum RuleComponent {
@@ -67,12 +67,60 @@ pub struct Grammar {
 }
 
 impl Grammar {
-    fn new() -> Grammar {
+    pub fn new() -> Grammar {
         Grammar {
             lexical_units: Vec::new(),
             production_rules: Vec::new(),
             axiom: String::new(),
         }
+    }
+
+    pub fn add_lexical_unit(&mut self, lu: LexicalUnit) {
+        if self.lexical_units.iter().find(|rule| rule.name == lu.name).is_none() {
+            self.lexical_units.push(lu);
+        }
+    }
+
+    pub fn add_production_rule(&mut self, pr: ProductionRule) {
+        if self.axiom.is_empty() {
+            self.axiom = pr.name.clone();
+        }
+        self.production_rules.push(pr);
+    }
+
+    pub fn check_consistency(&self) -> Result<(), String> {
+        for production_rule in &self.production_rules {
+            for rule_component in &production_rule.rule {
+                match rule_component {
+                    &RuleComponent::ProductionRule(ref name) => {
+                        if self.production_rules.iter().find(|r| *name == r.name).is_none() {
+                            return Err(format!("The production rule '{}' does not exist", name));
+                        }
+                    },
+                    &RuleComponent::LexicalUnit(ref name) => {
+                        if self.lexical_units.iter().find(|lu| *name  == lu.name).is_none() {
+                            return Err(format!("The lexical unit '{}' does not exist", name));
+                        }
+                    },
+                    &RuleComponent::Epsilon => {},
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn check_regexs(&self) -> Result<(), String> {
+        let regex_check_job = |regex: &LexicalUnit| match Expr::parse(&regex.regex) {
+                Ok(_) => Ok(()),
+                Err(err) => Err(format!("Error in regex {} : {}", regex.name, err)),
+            };
+
+        self.lexical_units.iter().map(regex_check_job).fold(Ok(()), |acc, x| acc.and(x))
+    }
+
+    pub fn lexical_unit_exist(&self, lexical_rule: &LexicalUnit) -> bool {
+        self.lexical_units.iter().find(|rule| rule.name == lexical_rule.name).is_some()
     }
 
     fn get_production_rule(&self, name: &String) -> Vec<&ProductionRule> {
@@ -249,7 +297,7 @@ impl Grammar {
         (first, follow)
     }
 
-    fn check_for_first_first_conflicts(&self) -> Result<(), String> {
+    pub fn check_for_first_first_conflicts(&self) -> Result<(), String> {
 
         let first = self.first();
 
@@ -264,14 +312,14 @@ impl Grammar {
                 match rule_node {
                     &RuleComponent::LexicalUnit(ref name) => {
                         if !accumulatorSet.insert(SetElement::LexicalUnit(name.clone())) {
-                            return Err(format!("First-First conflict for the rule {}", rule_name));
+                            return Err(format!("First-First conflict for the non-terminal {}", rule_name));
                         }
                     },
                     &RuleComponent::ProductionRule(ref name) => { //Form A -> B...
                         let first_of_B = first.get(name).unwrap();
                         for first_elem in first_of_B {
                             if !accumulatorSet.insert(first_elem.clone()) {
-                                return Err(format!("First-First conflict for the rule {}", rule_name));
+                                return Err(format!("First-First conflict for the non-terminal {}", rule_name));
                             }
                         }
                     },
@@ -282,319 +330,4 @@ impl Grammar {
 
         Ok(())
     }
-}
-
-//Methods
-//get_rule(name: String&) -> Vec<ProductionRule>&
-
-struct ParserContext {
-    src: String,
-    row: u32,
-    col: u32,
-    str_pos: usize,
-}
-
-impl ParserContext {
-    fn new(src : String) -> ParserContext {
-        ParserContext {
-            src: src,
-            row: 1,
-            col: 0,
-            str_pos: 0
-        }
-    }
-
-    fn next_word(&mut self) -> Option<String> {
-        let mut iter = self.src.chars();
-        let mut ch = iter.nth(self.str_pos);
-        let mut c : char;
-        let mut read_word = String::new();
-
-        match ch {
-            None => { return None },
-            Some(chr) => { c = chr}
-        }
-
-        macro_rules! next_char {
-            ($err:stmt) => ({
-                self.str_pos += 1;
-                ch = iter.next();
-
-                match ch {
-                    None => { $err },
-                    Some(chr) => { c = chr }
-                }
-
-                match c { //TODO : Implement a better line/column tracking and forward this information in the word
-                    ' ' | '\t' => self.col += 1,
-                    '\n' => self.row += 1,
-                    _ => {}
-                }
-            });
-        }
-
-        while (c == ' ') || (c == '\n') || (c == '\t') { //We skip leading whitespaces
-            next_char! { return None }
-        }
-
-        while !((c == ' ') || (c == '\n') || (c == '\t')) {
-            read_word.push(c);
-            next_char! { return Some(read_word) }
-        }
-
-        Some(read_word)
-    }
-
-    pub fn read_line(&mut self) -> Option<String> {
-        let mut iter = self.src.chars();
-        let mut ch = iter.nth(self.str_pos);
-        let mut c : char;
-        let mut read_word = String::new();
-
-        match ch {
-            None => { return None },
-            Some(chr) => { c = chr}
-        }
-
-        macro_rules! next_char {
-            ($err:stmt) => ({
-                self.str_pos += 1;
-                ch = iter.next();
-
-                match ch {
-                    None => { $err },
-                    Some(chr) => { c = chr }
-                }
-
-                match c {
-                    ' ' | '\t' => self.col += 1,
-                    '\n' => self.row += 1,
-                    _ => {}
-                }
-            });
-        }
-
-        while (c == ' ') || (c == '\n') || (c == '\t') { //We skip leading whitespaces
-            next_char! { return None }
-        }
-
-        while c != '\n' {
-            read_word.push(c);
-            next_char! { return Some(read_word) }
-        }
-
-        Some(read_word)
-    }
-}
-
-struct GrammarParser {
-    ctx: ParserContext,
-    grammar: Grammar,
-    auto_counter: u32, //Counter for generating automatic lexical unit name
-}
-
-impl GrammarParser {
-    fn new(src: String) -> GrammarParser {
-        GrammarParser {
-            ctx : ParserContext::new(src),
-            grammar: Grammar::new(),
-            auto_counter: 1,
-        }
-    }
-
-    fn get_resulting_grammar(self) -> Grammar {
-        self.grammar
-    }
-
-    fn parse(&mut self) -> Result<(), String> {
-        while let Some(str_word) = self.ctx.next_word() {
-            match str_word.chars().next().unwrap() {
-                'A'...'Z' => {
-                    match self.parse_grammar_rule(str_word) {
-                        Ok(()) => {},
-                        Err(msg) => {return Err(msg)},
-                    }
-                },
-                'a'...'z' => {
-                    match self.parse_lexical_unit(str_word) {
-                        Ok(()) => {},
-                        Err(msg) => {return Err(msg)},
-                    }
-                }
-                _ => { return Err(String::from("Unknown token : ") + str_word.as_str())}
-            }
-        }
-
-        Ok(())
-    }
-
-    fn parse_grammar_rule(&mut self, name : String) -> Result<(), String> {
-        match self.ctx.next_word() {
-            None => {return Err(format!("line {} : Expected '->'", self.ctx.row))},
-            Some(token) => {
-                if token != "->" {
-                    return Err(format!("line {} : Expected '->' found '{}'", self.ctx.row, token));
-                }
-            }
-        }
-
-        if let Some(rule_str) = self.ctx.read_line() {
-            let mut production_rule = ProductionRule{
-                name: name,
-                rule: Vec::new()
-            };
-
-            for comp_str in rule_str.split_whitespace() {
-                let component_str = String::from(comp_str);
-                let component = match component_str.chars().next().unwrap() {
-                    'a'...'z' => if component_str == "epsilon" {
-                        RuleComponent::Epsilon
-                    } else {
-                        RuleComponent::LexicalUnit(component_str.to_owned())
-                    },
-                    'A'...'Z' => {RuleComponent::ProductionRule(component_str.to_owned())},
-                    '\'' => {
-                        let s = component_str.len();
-                        if s < 3 {
-                            return Err(format!("line {} : The regex in a production rule cannot be empty.", self.ctx.row));
-                        }
-
-                        let regex : String = component_str.chars()
-                                                    .enumerate()
-                                                    .filter(|&(i, _)| 0 < i && i < s-1)
-                                                    .map(|(_, c)| c)
-                                                    .collect();
-
-                        let name = format!("auto_{}", self.auto_counter);
-                        self.auto_counter += 1;
-
-                        if self.grammar.lexical_units.iter().find(|rule| rule.name == name).is_none() {
-                            self.grammar.lexical_units.push(LexicalUnit{name:name.clone(), regex:String::from(regex)});
-                        }
-
-                        RuleComponent::LexicalUnit(name)
-                    },
-                    _ => {return Err(format!("line {}: '{}' is unexpected", self.ctx.row, component_str))}
-                };
-
-                production_rule.rule.push(component);
-
-                if self.grammar.axiom.is_empty() {
-                    self.grammar.axiom = production_rule.name.clone();
-                }
-            }
-            self.grammar.production_rules.push(production_rule);
-            Ok(())
-        }
-        else {
-            Err(format!("A production rule cannot be empty"))
-        }
-    }
-
-    fn parse_lexical_unit(&mut self, name : String) -> Result<(), String> {
-        //Let's read the ':'
-        match self.ctx.next_word() {
-            None => {return Err(format!("line {} : Expected ':'", self.ctx.row))},
-            Some(token) => {
-                if token != ":" {
-                    return Err(format!("line {} : Expected ':' found '{}'", self.ctx.row, token));
-                }
-            }
-        }
-
-        //Ok, now the regex
-        if let Some(regex) = self.ctx.read_line() {
-            let lexical_rule = LexicalUnit {
-                name: name,
-                regex: regex,
-            };
-
-            if self.grammar.lexical_units.iter().find(|rule| rule.name == lexical_rule.name).is_some() {
-                return Err(format!("line {} : the lexical unit {} has already been declared", self.ctx.row, lexical_rule.name));
-            }
-
-            //TODO : Implement a check by regex too
-            //TODO : Check that the regex is syntacticly corret (https://crates.io/crates/regex-syntax)
-            self.grammar.lexical_units.push(lexical_rule);
-            Ok(())
-        }
-        else {
-            Err(format!("line {} : The regex is expected after ':' but nothing was found", self.ctx.row))
-        }
-    }
-
-    fn check_consistency(& self) -> Result<(), String> {
-        for production_rule in &self.grammar.production_rules {
-            for rule_component in &production_rule.rule {
-                match rule_component {
-                    &RuleComponent::ProductionRule(ref name) => {
-                        if self.grammar.production_rules.iter().find(|r| *name == r.name).is_none() {
-                            return Err(format!("The production rule '{}' does not exist", name));
-                        }
-                    },
-                    &RuleComponent::LexicalUnit(ref name) => {
-                        if self.grammar.lexical_units.iter().find(|lu| *name  == lu.name).is_none() {
-                            return Err(format!("The lexical unit '{}' does not exist", name));
-                        }
-                    },
-                    &RuleComponent::Epsilon => {},
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    fn check_regexs(&self) -> Result<(), String> {
-        let regex_check_job = |regex: &LexicalUnit| match Expr::parse(&regex.regex) {
-                Ok(_) => Ok(()),
-                Err(err) => Err(format!("Error in regex {} : {}", regex.name, err)),
-            };
-
-        self.grammar.lexical_units.iter().map(regex_check_job).fold(Ok(()), |acc, x| acc.and(x))
-    }
-}
-
-pub fn parse_grammar(src : String) -> Result<Grammar, String> {
-    let mut parser = GrammarParser::new(src);
-
-    if let Err(msg) = parser.parse() {
-        return Err(msg);
-    }
-
-    if let Err(msg) = parser.check_consistency() {
-        return Err(msg);
-    }
-
-    if let Err(msg) = parser.check_regexs() {
-        return Err(msg);
-    }
-
-    let grammar = parser.get_resulting_grammar();
-
-    if let Err(msg) = grammar.check_for_first_first_conflicts() {
-        return Err(msg);
-    }
-
-    Ok(grammar)
-}
-
-#[test]
-fn test_next_word() {
-    let mut ctx = ParserContext::new("test and run".to_owned());
-
-    assert_eq!(ctx.next_word().unwrap(), "test");
-    assert_eq!(ctx.next_word().unwrap(), "and");
-    assert_eq!(ctx.next_word().unwrap(), "run");
-}
-
-#[test]
-fn test_read_line() {
-    let mut ctx = ParserContext::new("line 1\nline2\nline3\nline4".to_owned());
-    ctx.next_word();
-
-    assert_eq!(ctx.read_line().unwrap(), "1");
-    assert_eq!(ctx.read_line().unwrap(), "line2");
-    assert_eq!(ctx.read_line().unwrap(), "line3");
-    assert_eq!(ctx.read_line().unwrap(), "line4");
 }

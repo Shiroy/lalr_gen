@@ -18,6 +18,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 */
 
 mod grammar;
+mod grammar_parser;
 mod generator;
 mod liquidobject;
 
@@ -63,7 +64,7 @@ fn main() {
         }
     };
 
-    let parsed_grammar = match grammar::parse_grammar(grammar_content) {
+    let parsed_grammar = match grammar_parser::parse_grammar(grammar_content) {
         Ok(g) => generator::generate(grammar_file, g),
         Err(msg) => {println!("Error : {}", msg); return;},
     };
