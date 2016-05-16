@@ -256,6 +256,10 @@ pub fn parse_grammar(src : String) -> Result<Grammar, String> {
         return Err(msg);
     }
 
+    if let Err(msg) = grammar.check_for_first_follow_conflicts() {
+        return Err(msg);
+    }
+
     Ok(grammar)
 }
 

@@ -330,4 +330,25 @@ impl Grammar {
 
         Ok(())
     }
+
+    pub fn check_for_first_follow_conflicts(&self) -> Result<(), String> {
+        let (first, follow) = self.first_and_follow();
+
+        for rule_name in self.get_all_production_rules_name() {
+            let first_of_A = first.get(&rule_name).unwrap();
+            let follow_of_A = follow.get(&rule_name).unwrap();
+
+            if first_of_A.iter().any(|x| match x {
+                &SetElement::Epsilon => true,
+                &SetElement::EndOfString => { unreachable!() },
+                _ => false
+            }) {
+                if !first_of_A.is_disjoint(&follow_of_A) {
+                    return Err(format!("First-Follow conflict for non-terminal {}", rule_name));
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
