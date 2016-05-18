@@ -198,6 +198,11 @@ impl GrammarParser {
                     _ => {return Err(format!("line {}: '{}' is unexpected", self.ctx.row, component_str))}
                 };
 
+                if let RuleComponent::Epsilon = component {
+                    if production_rule.rule.len() > 0 {
+                        return Err(format!("Cannot use epsilon in the middle of a production rule, for rule {}", production_rule.name));
+                    }
+                }
                 production_rule.rule.push(component);
             }
 
@@ -316,4 +321,11 @@ fn test_first_follow_conflict_2() {
     let grammar = String::from(include_str!("../test/test_grammars/first_follow_2.ll"));
     let parse_result = parse_grammar(grammar);
     assert!(parse_result.is_ok());
+}
+
+#[test]
+fn test_epsilon_in_the_middle() {
+    let grammar = String::from(include_str!("../test/test_grammars/epsilon_in_the_middle.ll"));
+    let parse_result = parse_grammar(grammar);
+    assert_eq!(parse_result.unwrap_err(), "Cannot use epsilon in the middle of a production rule, for rule S");
 }
